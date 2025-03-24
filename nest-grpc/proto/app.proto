@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package app;
+
+service App {
+  rpc SignUp (SignUpDto) returns (Login);
+  rpc GetAllUsers (Empty) returns (UserList);
+  rpc UpdateUser (User) returns (User);
+  rpc DeleteUser (UserIdDto) returns (Empty);
+
+  rpc CreateCategory (CreateCategoryDto) returns (Category);
+  rpc GetCategoryById (CategoryIdDto) returns (Category);
+  rpc GetAllCategories (Empty) returns (CategoryList);
+  rpc GetCategoriesByUserId (UserIdDto) returns (CategoryList);
+  rpc UpdateCategory (Category) returns (Category);
+  rpc DeleteCategory (CategoryIdDto) returns (Empty);
+
+  rpc LoginUser (LoginDto) returns(Login);
+
+  rpc GetAllUsersWithCategories (Empty) returns (UserWithCategoriesList);
+}
+message LoginDto{
+  string email=1;
+  string password=2;
+}
+message Login{
+  User user=1;
+  string token=2;
+}
+
+
+message Empty {}
+
+message UserIdDto{
+  string id=1;
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string password = 4;
+}
+
+message Category {
+  string id = 1;
+  string name = 2;
+  string userId = 3;
+}
+
+message SignUpDto {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message CreateCategoryDto {
+  string name = 1;
+  string userId = 2;
+}
+
+
+message CategoryIdDto {
+  string id = 1;
+}
+
+message UserList {
+  repeated User users = 1;
+}
+
+message CategoryList {
+  repeated Category categories = 1;
+}
+
+message UserWithCategories {
+  User user = 1;
+  repeated Category categories = 2;
+}
+
+message UserWithCategoriesList {
+  repeated UserWithCategories users = 1;
+}

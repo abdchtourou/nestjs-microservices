@@ -46,7 +46,7 @@ export interface User {
 
 export const AUTH_PACKAGE_NAME = "auth";
 
-export interface UserServiceClient {
+export interface  UserServiceClient {
   createUser(request: CreateUserDto): Observable<User>;
 
   findAllUsers(request: Empty): Observable<Users>;

@@ -1,90 +1,162 @@
+
+
 import {
+  Category,
+  CategoryIdDto,
+  CategoryList,
+  CreateCategoryDto,
+  SignUpDto,
+  Login,
+  LoginDto,
   User,
-  CreateUserDto,
-  UpdateUserDto,
-  Users,
-  PaginationDto,
+  UserIdDto,
+  UserList,
+  UserWithCategoriesList,
 } from '@app/common';
-import { Injectable, NotFoundException, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
-import { Observable, Subject } from 'rxjs';
 
 @Injectable()
-export class UserService implements OnModuleInit {
-  private readonly users: User[] = [];
+export class UserService {
+  private users: User[] = [];
+  private categories: Category[] = [];
 
-  onModuleInit() {
-    for (let i = 0; i <= 100; i++) {
-      this.create({ username: `abd${i}`, password: randomUUID(), age: 10 });
+  constructor(private readonly jwtService: JwtService) {}
+
+
+
+
+  async login(user: LoginDto): Promise<Login> {
+    const existingUser = this.users.find((u) => u.email === user.email);
+
+    if (!existingUser) {
+      throw new Error('User not found');
     }
+
+    const payload = { username: user.email, sub: existingUser.id };
+
+    const token = this.jwtService.sign(payload);
+
+    return {
+      user: existingUser,
+      token: token,
+    };
+  }
+  
+
+
+  async signUp(SignUpDto: SignUpDto): Promise<Login> {
+    const newUser: User = {
+      ...SignUpDto,
+      id: randomUUID(),
+    };
+    this.users.push(newUser);
+
+    const payload = { username: newUser.email, sub: newUser.id };
+    const token = this.jwtService.sign(payload);
+
+    return {
+      user: newUser,
+      token: token,
+    };
   }
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    try {
-      const user: User = {
-        ...createUserDto,
-        id: randomUUID(),
-      };
-      this.users.push(user);
-      return user;
-    } catch (error) {
-      throw new InternalServerErrorException('Failed to create user');
-    }
-  }
-
-  async findAll(): Promise<Users> {
-    return { users: this.users };
-  }
-
-  async findOne(id: string): Promise<User> {
-    const user = this.users.find((user) => user.id === id);
+  getUserById(id: string): User {
+    const user = this.users.find((u) => u.id === id);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new Error('User not found');
     }
     return user;
   }
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const userIndex = this.users.findIndex((user) => user.id === id);
-    if (userIndex === -1) {
-      throw new NotFoundException('User not found');
-    }
-  
-    const updatedUser = {
-      ...this.users[userIndex], 
-      ...updateUserDto, 
-    };
-  
-    this.users[userIndex] = updatedUser; 
-  
 
+  async getAllUsers(): Promise<UserList> {
+    return { users: this.users };
+  }
+
+  updateUser(id: string, updateUserDto: Partial<SignUpDto>): User {
+    const userIndex = this.users.findIndex((u) => u.id === id);
+    if (userIndex === -1) {
+      throw new Error('User not found');
+    }
+    const updatedUser = { ...this.users[userIndex], ...updateUserDto };
+    this.users[userIndex] = updatedUser;
     return updatedUser;
   }
-  async remove(id: string): Promise<User> {
-    const userIndex = this.users.findIndex((user) => user.id === id);
+
+  deleteUser(userId: UserIdDto): void {
+    const userIndex = this.users.findIndex((u) => u.id === userId.id);
     if (userIndex === -1) {
-      throw new NotFoundException('User not found');
+      throw new Error('User not found');
     }
-    const [removedUser] = this.users.splice(userIndex, 1);
-    return removedUser;
+    this.users.splice(userIndex, 1);
   }
 
-  queryUsers(paginationDtoStream: Observable<PaginationDto>): Observable<Users> {
-    const subject = new Subject<Users>();
+  createCategory(createCategoryDto: CreateCategoryDto): Category {
+    const userExists = this.users.some(
+      (user) => user.id === createCategoryDto.userId,
+    );
+    if (!userExists) {
+      throw new Error('User not found');
+    }
+    const newCategory: Category = { id: randomUUID(), ...createCategoryDto };
+    this.categories.push(newCategory);
+    return newCategory;
+  }
 
-    const onNext = (paginationDto: PaginationDto) => {
-      const start = paginationDto.page * paginationDto.skip;
-      subject.next({
-        users: this.users.slice(start, start + paginationDto.skip),
-      });
+  getCategoryById(categoryIdDto: CategoryIdDto): Category {
+    const category = this.categories.find((c) => c.id === categoryIdDto.id);
+    if (!category) {
+      throw new Error('Category not found');
+    }
+    return category;
+  }
+
+  getAllCategories(): CategoryList {
+    return { categories: this.categories };
+  }
+
+  getCategoriesByUserId(userId: UserIdDto): CategoryList {
+    const userCategories = this.categories.filter(
+      (category) => category.userId === userId.id,
+    );
+    return { categories: userCategories };
+  }
+
+  updateCategory(
+    id: string,
+    updateCategoryDto: Partial<CreateCategoryDto>,
+  ): Category {
+    const categoryIndex = this.categories.findIndex((c) => c.id === id);
+    if (categoryIndex === -1) {
+      throw new Error('Category not found');
+    }
+    const updatedCategory = {
+      ...this.categories[categoryIndex],
+      ...updateCategoryDto,
     };
+    this.categories[categoryIndex] = updatedCategory;
+    return updatedCategory;
+  }
 
-    const onComplete = () => subject.complete();
+  deleteCategory(categoryId: CategoryIdDto): void {
+    const categoryIndex = this.categories.findIndex(
+      (c) => c.id === categoryId.id,
+    );
+    if (categoryIndex === -1) {
+      throw new Error('Category not found');
+    }
+    this.categories.splice(categoryIndex, 1);
+  }
 
-    paginationDtoStream.subscribe({
-      next: onNext,
-      complete: onComplete,
-    });
-
-    return subject.asObservable();
+  getAllUsersWithCategories(): UserWithCategoriesList {
+    return {
+      users: this.users.map((user) => ({
+        user,
+        categories: this.categories.filter(
+          (category) => category.userId === user.id,
+        ),
+      })),
+    };
   }
 }

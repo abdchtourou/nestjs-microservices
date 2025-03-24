@@ -1,1 +1,1 @@
-export const AUTH_SERVICE='auth';
+export const APP_SERVICE='app';
